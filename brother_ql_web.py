@@ -165,6 +165,73 @@ def image_to_png_bytes(im):
     image_buffer.seek(0)
     return image_buffer.read()
 
+@post('/api/print/image')
+@get('/api/print/image')
+def print_image():
+    """
+    API to print an image
+
+    returns: JSON
+
+    Name      Printable px   Description
+    12         106           12mm endless
+    29         306           29mm endless
+    38         413           38mm endless
+    50         554           50mm endless
+    54         590           54mm endless
+    62         696           62mm endless
+    102       1164           102mm endless
+    17x54      165 x  566    17mm x 54mm die-cut
+    17x87      165 x  956    17mm x 87mm die-cut
+    23x23      202 x  202    23mm x 23mm die-cut
+    29x42      306 x  425    29mm x 42mm die-cut
+    29x90      306 x  991    29mm x 90mm die-cut
+    39x90      413 x  991    38mm x 90mm die-cut
+    39x48      425 x  495    39mm x 48mm die-cut
+    52x29      578 x  271    52mm x 29mm die-cut
+    62x29      696 x  271    62mm x 29mm die-cut
+    62x100     696 x 1109    62mm x 100mm die-cut
+    102x51    1164 x  526    102mm x 51mm die-cut
+    102x152   1164 x 1660    102mm x 153mm die-cut
+    d12         94 x   94    12mm round die-cut
+    d24        236 x  236    24mm round die-cut
+    d58        618 x  618    58mm round die-cut
+    """
+
+    return_dict = {'success': False}
+
+    try:
+        params = request.params.decode()
+        name = params.get('name', '62x29')
+        image = request.files.get('image')
+        red = params.get('red', False)
+    except LookupError as e:
+        return_dict['error'] = e.msg
+        return return_dict
+
+    if image is None:
+        return_dict['error'] = 'Please provide the image for the label'
+        return return_dict
+
+    qlr = BrotherQLRaster(CONFIG['PRINTER']['MODEL'])
+    create_label(qlr, image, name, red=red, threshold=context['threshold'],
+                 cut=True)
+
+    if not DEBUG:
+        try:
+            be = BACKEND_CLASS(CONFIG['PRINTER']['PRINTER'])
+            be.write(qlr.data)
+            be.dispose()
+            del be
+        except Exception as e:
+            return_dict['message'] = str(e)
+            logger.warning('Exception happened: %s', e)
+            return return_dict
+
+    return_dict['success'] = True
+    if DEBUG: return_dict['data'] = str(qlr.data)
+    return return_dict
+
 @post('/api/print/text')
 @get('/api/print/text')
 def print_text():
@@ -201,7 +268,7 @@ def print_text():
     red = False
     if 'red' in context['label_size']:
         red = True
-    create_label(qlr, im, context['label_size'], red=red, threshold=context['threshold'], cut=True, rotate=rotate)
+    create_label(qlr, im, context['label_size'], red=red, threshold=70, cut=True, rotate=rotate)
 
     if not DEBUG:
         try:
