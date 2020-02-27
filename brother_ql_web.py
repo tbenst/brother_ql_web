@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -212,9 +212,8 @@ def print_image():
     if image is None:
         return_dict['error'] = 'Please provide the image for the label'
         return return_dict
-
     qlr = BrotherQLRaster(CONFIG['PRINTER']['MODEL'])
-    create_label(qlr, image, name, red=red, threshold=context['threshold'],
+    create_label(qlr, image.file, name, red=red, threshold=70,
                  cut=True)
 
     if not DEBUG:
